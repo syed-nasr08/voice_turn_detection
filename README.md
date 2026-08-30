@@ -125,14 +125,4 @@ curl -s -X POST http://127.0.0.1:8000/v1/turn \
 # → probability_complete ≈ 0.03, recommended_timeout_ms: 1600  (caller isn't done — wait)
 ```
 
-## Known limitations (details in `DISCUSSION.md`)
 
-- **Prosody-blind**: text can't hear rising intonation or a stretched "uhhh";
-  the fix is a small audio model fused with this one, trainable on production
-  audio.
-- **No agent context yet**: "eight seven three" is incomplete after "What's
-  your phone number?" but complete after "How many trucks?" — the API reserves
-  a `context` field; wiring it in is the biggest available accuracy win.
-- **Domain**: training data is everyday dialogue, not logistics calls; the
-  monitoring plan (`MONITORING.md`) turns production traffic
-  into the training set that fixes this.
