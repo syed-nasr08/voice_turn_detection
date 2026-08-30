@@ -1,0 +1,6 @@
+.venv
+training/model_out
+training/checkpoints
+data/dataset
+**/__pycache__
+serving/model/model.onnx
