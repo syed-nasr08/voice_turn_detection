@@ -135,6 +135,8 @@ keystroke is scored.
 
 ### A real example
 
+![Live demo — the model scoring a spoken sentence in real time](docs/demo.png)
+
 Speaking *"hi my name is nasir and i was thinking that i would prepare a
 speech"* and pausing produced:
 
