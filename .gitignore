@@ -1,0 +1,18 @@
+# environments & caches
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+# regenerable artifacts (scripts rebuild them; see README Quickstart)
+data/dataset/
+training/model_out/
+training/checkpoints/
+serving/model/model.onnx   # 91MB fp32; the served int8 model is kept
+
+# supporting docs & private prep — README.md is the only tracked markdown
+INTERVIEW_PREP.md
+TURN_DETECTION.md
+RESULTS.md
+MONITORING.md
+DISCUSSION.md
