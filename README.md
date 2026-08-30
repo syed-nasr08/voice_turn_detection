@@ -125,4 +125,43 @@ curl -s -X POST http://127.0.0.1:8000/v1/turn \
 # → probability_complete ≈ 0.03, recommended_timeout_ms: 1600  (caller isn't done — wait)
 ```
 
+## Live demo (speak to it)
+
+With the server running, open **http://127.0.0.1:8000/** in Chrome or Edge and
+click **🎤 Start listening** (allow microphone access). The browser's built-in
+speech recognition stands in for the production STT and streams your words to
+the model as you speak. Any browser can use the typing box instead — every
+keystroke is scored.
+
+### A real example
+
+Speaking *"hi my name is nasir and i was thinking that i would prepare a
+speech"* and pausing produced:
+
+| UI element | Showed | What it means |
+|---|---|---|
+| Transcript box | `hi my name is nasir and i was thinking that i would prepare a speech` | What the speech recognizer heard — the exact text the model judges. Gray words are still tentative (the recognizer may revise them); solid words are final. |
+| Confidence meter + `78%` | amber bar, ~¾ full | `probability_complete` — the model's confidence this is a *finished thought* (0–100%). Here it hedges: the sentence is grammatically complete, but "…prepare a speech" is often continued ("…about my trip"). **Red** <30% = clearly mid-thought, **amber** = ambiguous, **green** ≥90% = confidently finished. |
+| Verdict label: `maybe finished` | amber text | `decision_hint` — the probability translated into one of three bands: `sounds unfinished` / `maybe finished` / `sounds finished`. |
+| `agent should wait 600ms of silence before responding` | — | `recommended_timeout_ms` — the **dynamic timeout**, the whole point of the system: ≥90% confidence → wait only **160ms**; ambiguous → **600–1000ms**; clearly unfinished → **1600ms**. The wait adapts to how done you sound. |
+| `model: 5.23ms` | — | `inference_ms` — how long the model itself took to judge. Any lag you *feel* is the free browser STT, not the model (production STT is much faster). |
+| Thin blue countdown bar | filling up | The recommended silence elapsing in real time. **Speaking again resets it** — demonstrating the safety rule that the model can never interrupt live speech, it only decides how long silence must last. |
+| **🤖 Agent would respond now** banner | flashes ~2s after the bar fills | The simulated moment a real agent would start talking — there's no LLM/TTS behind the demo, so the banner stands in for the agent's voice. Each flash ends one "turn"; the transcript resets for the next. |
+| Pill buttons (e.g. `my phone number is five five five`) | — | One-click canonical hard cases from the dataset, for trying contrasts instantly without speaking. |
+
+### The contrast worth trying
+
+1. Say **"what time do you close"** and stop → green, ~160–600ms, banner
+   almost immediately. Snappy agent.
+2. Say **"my phone number is five five five"** and stop → deep red, 1600ms of
+   patience — this is the exact moment a fixed-timeout system would have
+   interrupted you, and this one doesn't. Then finish the digits and watch it
+   flip green.
+
+One honest detail the demo surfaces: browser STT sends lowercase, unpunctuated
+text, so `what time do you close` scores ~0.67 while `What time do you close?`
+scores ~0.98 — the punctuation-dropout training (the 40%) is what keeps the
+unpunctuated version on the right side of the decision, and the residual gap is
+part of why an audio/prosody model is the designed next step.
+
 
