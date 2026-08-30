@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turn Detector — Live Demo</title>
+<style>
+  :root {
+    --bg: #0f1117; --card: #181b23; --border: #2a2f3a;
+    --text: #e8eaf0; --muted: #8b93a5;
+    --wait: #e05252; --maybe: #e0a852; --done: #4cc38a; --accent: #6c8cff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: flex; justify-content: center; padding: 32px 16px;
+  }
+  main { width: 100%; max-width: 680px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px; margin-bottom: 14px;
+  }
+  #micBtn {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--accent); color: #fff; border: 0; border-radius: 999px;
+    padding: 10px 22px; font-size: 15px; font-weight: 600; cursor: pointer;
+  }
+  #micBtn.listening { background: var(--wait); }
+  #micBtn:disabled { background: #3a3f4d; cursor: not-allowed; }
+  #speechNote { color: var(--muted); font-size: 12px; margin-top: 8px; }
+  #transcript {
+    min-height: 52px; font-size: 17px; padding: 12px;
+    background: #10131a; border-radius: 8px; border: 1px solid var(--border);
+  }
+  #transcript .interim { color: var(--muted); }
+  #transcript:empty::before { content: "…"; color: #3a3f4d; }
+  .meterWrap { height: 26px; background: #10131a; border-radius: 999px;
+    border: 1px solid var(--border); overflow: hidden; margin: 14px 0 8px; }
+  #meter { height: 100%; width: 0%; border-radius: 999px;
+    background: var(--wait); transition: width .18s ease, background .18s ease; }
+  .row { display: flex; justify-content: space-between; align-items: baseline;
+    flex-wrap: wrap; gap: 6px; }
+  #prob { font-size: 30px; font-weight: 700; }
+  #hint { font-size: 14px; font-weight: 600; }
+  .muted { color: var(--muted); font-size: 12px; }
+  #countdownWrap { height: 6px; background: #10131a; border-radius: 999px;
+    overflow: hidden; margin-top: 12px; }
+  #countdown { height: 100%; width: 0%; background: var(--accent); }
+  #respond {
+    display: none; margin-top: 12px; padding: 10px 14px; border-radius: 8px;
+    background: rgba(76,195,138,.12); border: 1px solid var(--done);
+    color: var(--done); font-weight: 700;
+  }
+  input[type=text] {
+    width: 100%; padding: 11px 12px; font-size: 16px; color: var(--text);
+    background: #10131a; border: 1px solid var(--border); border-radius: 8px;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .chips button {
+    background: #10131a; color: var(--muted); border: 1px solid var(--border);
+    border-radius: 999px; padding: 6px 12px; font-size: 12px; cursor: pointer;
+  }
+  .chips button:hover { color: var(--text); border-color: var(--accent); }
+  .label { font-size: 12px; text-transform: uppercase; letter-spacing: .08em;
+    color: var(--muted); margin-bottom: 8px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Turn Detector — Live Demo</h1>
+  <div class="sub">The model watches the transcript and judges: <b>is this a finished
+  thought?</b> Confident "finished" → the agent waits only 160ms of silence.
+  Sounds unfinished → it waits up to 1.6s. Try pausing mid-phone-number.</div>
+
+  <div class="card">
+    <div class="label">1 · Speak (Chrome / Edge)</div>
+    <button id="micBtn">🎤 Start listening</button>
+    <div id="speechNote"></div>
+  </div>
+
+  <div class="card">
+    <div class="label">2 · Or type — scored on every keystroke</div>
+    <input type="text" id="typed" placeholder="try: i want to cancel my"
+           autocomplete="off" spellcheck="false">
+    <div class="chips" id="chips"></div>
+  </div>
+
+  <div class="card">
+    <div class="label">Transcript</div>
+    <div id="transcript"></div>
+    <div class="meterWrap"><div id="meter"></div></div>
+    <div class="row">
+      <span id="prob">–</span>
+      <span id="hint"></span>
+      <span class="muted" id="stats"></span>
+    </div>
+    <div class="muted" id="timeoutLine"></div>
+    <div id="countdownWrap"><div id="countdown"></div></div>
+    <div id="respond">🤖 Agent would respond now</div>
+  </div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const EXAMPLES = [
+  "what time do you close",
+  "my phone number is five five five",
+  "my phone number is five five five one two three four",
+  "i want to cancel my",
+  "yeah that works for me",
+  "um let me think",
+  "it's spelled J O",
+];
+EXAMPLES.forEach(t => {
+  const b = document.createElement("button");
+  b.textContent = t;
+  b.onclick = () => { $("typed").value = t; onText(t); };
+  $("chips").appendChild(b);
+});
+
+// ---------------- scoring ----------------
+let debounceTimer = null, lastResult = null, silenceTimer = null, countdownAnim = null;
+
+function onText(text, { fromMic = false } = {}) {
+  if (!fromMic) renderTranscript(text, "");
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => score(text, fromMic), 120);
+}
+
+async function score(text, fromMic) {
+  if (!text.trim()) { resetMeter(); return; }
+  try {
+    const r = await fetch("/v1/turn", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ transcript: text }),
+    });
+    lastResult = await r.json();
+    renderResult(lastResult);
+    if (fromMic) armCountdown(lastResult.recommended_timeout_ms);
+  } catch {
+    $("hint").textContent = "server unreachable";
+  }
+}
+
+function renderResult(res) {
+  const p = res.probability_complete;
+  const color = p >= 0.9 ? "var(--done)" : p >= 0.3 ? "var(--maybe)" : "var(--wait)";
+  $("meter").style.width = (p * 100).toFixed(1) + "%";
+  $("meter").style.background = color;
+  $("prob").textContent = (p * 100).toFixed(0) + "%";
+  $("prob").style.color = color;
+  $("hint").textContent = { complete: "sounds finished", maybe_complete: "maybe finished",
+                            wait: "sounds unfinished" }[res.decision_hint] || res.decision_hint;
+  $("hint").style.color = color;
+  $("stats").textContent = `model: ${res.inference_ms}ms`;
+  $("timeoutLine").textContent =
+    `agent should wait ${res.recommended_timeout_ms}ms of silence before responding`;
+}
+
+function resetMeter() {
+  $("meter").style.width = "0%"; $("prob").textContent = "–";
+  $("hint").textContent = ""; $("stats").textContent = "";
+  $("timeoutLine").textContent = ""; stopCountdown();
+}
+
+function renderTranscript(finalText, interimText) {
+  $("transcript").innerHTML = "";
+  $("transcript").append(finalText);
+  if (interimText) {
+    const s = document.createElement("span");
+    s.className = "interim"; s.textContent = " " + interimText;
+    $("transcript").appendChild(s);
+  }
+}
+
+// ------------- silence countdown (mic mode) -------------
+function armCountdown(timeoutMs) {
+  stopCountdown();
+  const start = performance.now();
+  countdownAnim = setInterval(() => {
+    const frac = Math.min(1, (performance.now() - start) / timeoutMs);
+    $("countdown").style.width = (frac * 100) + "%";
+  }, 40);
+  silenceTimer = setTimeout(() => {
+    stopCountdown(true);
+    $("respond").style.display = "block";
+    turnText = "";                       // next words start a fresh turn
+    setTimeout(() => { $("respond").style.display = "none"; }, 2200);
+  }, timeoutMs);
+}
+function stopCountdown(keepBar) {
+  clearTimeout(silenceTimer); clearInterval(countdownAnim);
+  if (!keepBar) $("countdown").style.width = "0%";
+}
+
+// ---------------- typing mode ----------------
+$("typed").addEventListener("input", e => onText(e.target.value));
+
+// ---------------- mic mode ----------------
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null, listening = false, turnText = "";
+
+if (!SR) {
+  $("micBtn").disabled = true;
+  $("speechNote").textContent =
+    "This browser has no built-in speech recognition — use Chrome or Edge, or the typing box below.";
+} else {
+  $("speechNote").textContent =
+    "Uses the browser's built-in speech recognition as a stand-in for the production STT. " +
+    "It adds its own lag — the model itself answers in ~1.5ms.";
+}
+
+$("micBtn").onclick = () => (listening ? stopMic() : startMic());
+
+function startMic() {
+  rec = new SR();
+  rec.continuous = true; rec.interimResults = true; rec.lang = "en-US";
+  turnText = "";
+  rec.onresult = ev => {
+    stopCountdown();                     // new speech cancels the pending turn end
+    $("respond").style.display = "none";
+    let finals = "", interim = "";
+    for (let i = 0; i < ev.results.length; i++) {
+      const t = ev.results[i][0].transcript;
+      ev.results[i].isFinal ? (finals += t + " ") : (interim += t);
+    }
+    // keep only what belongs to the current turn
+    const all = (finals + interim).trim().toLowerCase();
+    turnText = turnText && all.startsWith(turnText) ? all : all;
+    renderTranscript(finals.trim().toLowerCase(), interim.toLowerCase());
+    onText(all, { fromMic: true });
+  };
+  rec.onerror = e => { $("speechNote").textContent = "speech recognition error: " + e.error; stopMic(); };
+  rec.onend = () => { if (listening) rec.start(); };  // auto-restart (browser times out)
+  rec.start();
+  listening = true;
+  $("micBtn").textContent = "⏹ Stop listening";
+  $("micBtn").classList.add("listening");
+}
+
+function stopMic() {
+  listening = false;
+  if (rec) { rec.onend = null; rec.stop(); }
+  stopCountdown();
+  $("micBtn").textContent = "🎤 Start listening";
+  $("micBtn").classList.remove("listening");
+}
+</script>
+</body>
+</html>

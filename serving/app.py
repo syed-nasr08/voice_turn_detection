@@ -20,6 +20,7 @@ from typing import Optional
 import numpy as np
 import onnxruntime as ort
 from fastapi import FastAPI, Response
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from tokenizers import Tokenizer
 
@@ -105,6 +106,12 @@ def turn(req: TurnRequest):
         inference_ms=round(ms, 2),
         **decide(p),
     )
+
+
+@app.get("/", include_in_schema=False)
+def demo_page():
+    """Interactive demo: live mic (browser STT) or type-along scoring."""
+    return FileResponse(Path(__file__).parent / "demo.html", media_type="text/html")
 
 
 @app.get("/healthz")
