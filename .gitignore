@@ -12,6 +12,7 @@ serving/model/model.onnx   # 91MB fp32; the served int8 model is kept
 
 # supporting docs & private prep — README.md is the only tracked markdown
 INTERVIEW_PREP.md
+SCRIPT.md
 TURN_DETECTION.md
 RESULTS.md
 MONITORING.md
