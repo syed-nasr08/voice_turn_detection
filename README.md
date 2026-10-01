@@ -1,6 +1,6 @@
 # Turn Detector — End-of-Turn Detection for Voice AI Agents
 
-Solution to the HappyRobot AI/ML Engineering Task (EoT): a **turn detection
+A **turn detection
 model** that decides when the caller has finished speaking and the agent should
 respond — trained, evaluated, served, and stress-tested.
 
