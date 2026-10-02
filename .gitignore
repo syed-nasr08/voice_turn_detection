@@ -10,27 +10,13 @@ training/model_out/
 training/checkpoints/
 serving/model/model.onnx   # 91MB fp32; the served int8 model is kept
 
-# supporting docs & private prep — README.md is the only tracked markdown
-INTERVIEW_PREP.md
-SCRIPT.md
-TURN_DETECTION.md
-RESULTS.md
-MONITORING.md
-DISCUSSION.md
-presentation.html
-docs/SCRIPT.pdf
+# local scratch — README.md is the only tracked markdown
+/*.md
+!README.md
+notes/
 tools/
-SCRIPT1.md
-preparation1.md
-STUDY_GUIDE.md
-MARKET_COMPARISON.md
+docs/*.pdf
 docs/*.docx
-CONFIG.md
-docs/Turn_Detection_Presentation.pptx
-preparation_round_3.md
-ROUND3_PREP.md
+docs/*.pptx
 *.pdf
-analysis_round_2.md
-fixing_depth_claims.md
-cerebras_how_it_actually_works.md
-systems_design_example.md
+presentation.html

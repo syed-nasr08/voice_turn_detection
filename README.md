@@ -1,8 +1,13 @@
 # Turn Detector — End-of-Turn Detection for Voice AI Agents
 
+<<<<<<< Updated upstream
 A **turn detection
 model** that decides when the caller has finished speaking and the agent should
 respond — trained, evaluated, served, and stress-tested.
+=======
+A **turn detection model** that decides when a caller has finished speaking and
+a voice agent should respond — trained, evaluated, served, and stress-tested.
+>>>>>>> Stashed changes
 
 ## The problem
 
@@ -42,7 +47,7 @@ VAD pause ─► detector scores transcript tail ─► arm timer (recommended_t
 precision on COMPLETE is **0.981** — when the agent decides to answer quickly,
 it interrupts the caller less than 2% of the time.
 
-**Latency** (M1 Max, local loopback; requirement was <100ms):
+**Latency** (M1 Max, local loopback; target <100 ms per request):
 
 | Setting | Throughput | p50 | p99 |
 |---|---|---|---|
@@ -50,7 +55,10 @@ it interrupts the caller less than 2% of the time.
 | Concurrency 8 | 929 req/s | 7.2 ms | 23.1 ms |
 | Docker (same host, VM overhead) | 449 req/s | 12.5 ms | 85 ms |
 
-Model inference alone is ~1.5 ms. Full details and analysis: `RESULTS.md`.
+Model inference alone is ~1.5 ms; the remainder is HTTP overhead. The
+concurrency-32 case saturates the two workers and queues — a capacity cliff,
+not a latency regression. The service is stateless, so scaling is a matter of
+adding replicas.
 
 ## Data
 
@@ -75,8 +83,8 @@ Model inference alone is ~1.5 ms. Full details and analysis: `RESULTS.md`.
    transitions and only modulates how much silence is required — it never
    fires during active speech.
 3. One caller per call (no diarization / multi-party).
-4. English v1; multilingual is designed (same recipe on a multilingual
-   encoder) but not trained, per the time budget.
+4. English v1; multilingual follows the same recipe on a multilingual encoder
+   but is not trained here.
 5. STT punctuation/casing quality varies by vendor — handled via
    punctuation-dropout training, not assumed reliable.
 6. Policy thresholds/timeouts are deployment config, tunable without
@@ -90,11 +98,6 @@ training/           train.py, export_onnx.py (ONNX + INT8 quantization)
 evaluation/         evaluate.py (model vs baselines), latency_bench.py (stress test)
 serving/            FastAPI app, decision policy, smoke test, Dockerfile
 ```
-
-Supporting documents (shared separately, not tracked in this repo):
-`TURN_DETECTION.md` (design & trade-offs), `RESULTS.md` (measured findings),
-`MONITORING.md` (production monitoring plan, Step 4), `DISCUSSION.md`
-(limits & alternatives, Step 5).
 
 ## Quickstart
 
