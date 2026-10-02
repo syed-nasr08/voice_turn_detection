@@ -1,13 +1,9 @@
 # Turn Detector — End-of-Turn Detection for Voice AI Agents
 
-<<<<<<< Updated upstream
 A **turn detection
 model** that decides when the caller has finished speaking and the agent should
 respond — trained, evaluated, served, and stress-tested.
-=======
-A **turn detection model** that decides when a caller has finished speaking and
-a voice agent should respond — trained, evaluated, served, and stress-tested.
->>>>>>> Stashed changes
+
 
 ## The problem
 
